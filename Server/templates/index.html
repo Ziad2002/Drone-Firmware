@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Drone Control Panel</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
+</head>
+
+<body>
+<h2 style="color: purple;">WildSight</h2>
+<img src="https://bpb-us-e1.wpmucdn.com/sites.northwestern.edu/dist/1/224/files/2015/05/408042_10152245624829897_739456220_n-1flrdvy.jpg"
+     alt="Drone"
+     style="width: 400px; height: 400px; border: 1px solid black; object-fit: contain; margin-bottom: 10px;">
+
+  <div class="drone-controls">
+    <div class="movement-grid">
+      <div></div>
+      <button class="btn btn-forward" onclick="sendCommand('forward')">
+        <i class='fa fa-arrow-up'></i>
+      </button>
+      <div></div>
+
+      <button class="btn btn-left" onclick="sendCommand('left')">
+        <i class='fa fa-arrow-left'></i>
+      </button>
+      <div class="spacer"></div>
+      <button class="btn btn-right" onclick="sendCommand('right')">
+        <i class='fa fa-arrow-right'></i>
+      </button>
+
+      <div></div>
+      <button class="btn btn-backward" onclick="sendCommand('backward')">
+        <i class='fa fa-arrow-down'></i>
+      </button>
+      <div></div>
+    </div>
+
+    <div class="main-buttons">
+      <button class="btn btn-hover" onclick="sendCommand('hover')">Hover</button>
+    </div>
+
+    <div class="movement-grid">
+      <div></div>
+      <button class="btn btn-up" onclick="sendCommand('up')">
+        <i class="fa fa-angle-double-up"></i>
+      </button>
+      <div></div>
+
+      <button class="btn btn-yaw-left" onclick="sendCommand('yaw_left')">
+        <i class='fa fa-rotate-left'></i>
+      </button>
+      <div class="spacer"></div>
+      <button class="btn btn-yaw-right" onclick="sendCommand('yaw_right')">
+        <i class='fa fa-rotate-right'></i>
+      </button>
+
+      <div></div>
+      <button class="btn btn-down" onclick="sendCommand('down')">
+        <i class="fa fa-angle-double-down"></i>
+      </button>
+      <div></div>
+    </div>
+  </div>
+
+  <script>
+    const ws = new WebSocket("ws://localhost:8888/esp32_drone");
+  
+    ws.onopen = () => console.log("Connected to Tornado WebSocket");
+    ws.onerror = (err) => console.error("WebSocket error:", err);
+    ws.onclose = () => console.warn("WebSocket closed");
+    document.addEventListener("keydown", function(event) {
+        const key = event.key.toLowerCase();
+      
+        switch (key) {
+          case "arrowup":
+            sendCommand("forward");
+            break;
+          case "arrowdown":
+            sendCommand("backward");
+            break;
+          case "arrowleft":
+            sendCommand("left");
+            break;
+          case "arrowright":
+            sendCommand("right");
+            break;
+          case " ":
+            sendCommand("hover");
+            break;
+          case "a":
+            sendCommand("yaw_left");
+            break;
+          case "d":
+            sendCommand("yaw_right");
+            break;
+          case "w":
+            sendCommand("up");
+            break;
+          case "s":
+            sendCommand("down");
+            break;
+        }
+      });
+  
+    function sendCommand(cmd) {
+      if (ws.readyState === WebSocket.OPEN) {
+        ws.send(cmd);
+        console.log(`Sent: ${cmd}`);
+      } else {
+        alert("WebSocket not connected.");
+      }
+    }
+  </script>
+</body>
+</html>
