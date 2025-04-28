@@ -64,7 +64,7 @@
   </div>
 
   <script>
-    const ws = new WebSocket("ws://localhost:8888/esp32_drone");
+    const ws = new WebSocket("ws://18.223.203.35:8888/esp32_drone");
   
     ws.onopen = () => console.log("Connected to Tornado WebSocket");
     ws.onerror = (err) => console.error("WebSocket error:", err);

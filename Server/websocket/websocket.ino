@@ -7,7 +7,7 @@ const char* server_host = "18.223.203.35";
 const uint16_t server_port = 8888;
 String msg;
 int counter = 0;
-#define LED 23
+#define LED 2
 
 WebSocketsClient webSocket;
 
@@ -26,11 +26,13 @@ void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
       // Handle incoming command (e.g., forward, hover)
       Serial.printf("Speed: %d\n", counter);
       if (msg == "up"){
-        counter += 1;
-        analogWrite(LED, counter);
+        // counter += 1;
+        // analogWrite(LED, counter);
+        digitalWrite(LED, HIGH);
       } else if (msg == "down") {
-        counter -= 1;
-        analogWrite(LED, counter);
+        // counter -= 1;
+        // analogWrite(LED, counter);
+        digitalWrite(LED, LOW);
       }
       break;
       default:
