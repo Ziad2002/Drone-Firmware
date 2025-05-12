@@ -4,7 +4,7 @@
 
 // ===== Wi-Fi and WebSocket config =====
 const char* ssid = "Device-Northwestern";
-const char* server_host = "10.105.245.180";  // Your Tornado server IP
+const char* server_host = "18.223.203.35";  // Your Tornado server IP
 const uint16_t server_port = 8888;
 const char* server_path = "/esp32_image";   // Dedicated image WebSocket endpoint
 
@@ -79,8 +79,8 @@ void sendFrame() {
 void setup() {
   Serial.begin(115200);
   delay(500);
-
-  WiFi.begin(ssid, password);
+  WiFi.mode(WIFI_STA);
+  WiFi.begin(ssid);
   Serial.print("Connecting to Wi-Fi");
   while (WiFi.status() != WL_CONNECTED) {
     delay(500);
@@ -102,7 +102,7 @@ unsigned long lastSend = 0;
 void loop() {
   webSocket.loop();
 
-  if (webSocket.isConnected() && millis() - lastSend >= 1000) {  // 1 FPS
+  if (webSocket.isConnected() && millis() - lastSend >= 100) {  // 10 FPS
     sendFrame();
     lastSend = millis();
   }

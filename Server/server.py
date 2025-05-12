@@ -6,6 +6,19 @@ import os
 class MainHandler(tornado.web.RequestHandler):
     def get(self):
         self.render("index.html")
+        
+class ImageWebSocket(tornado.websocket.WebSocketHandler):
+    def check_origin(self, origin):
+        return True
+
+    async def on_message(self, message):
+        if isinstance(message, bytes):
+            with open("static/capture.jpg", "wb") as f:
+                f.write(message)
+            print("Image received via WebSocket")
+        else:
+            print(f"Unexpected text: {message}")
+
 
 class ControlWebSocket(tornado.websocket.WebSocketHandler):
     clients = set()
@@ -32,6 +45,7 @@ def make_app():
     return tornado.web.Application([
         (r"/", MainHandler),
         (r"/esp32_drone", ControlWebSocket), 
+        (r"/esp32_image", ImageWebSocket),
     ],
     template_path=os.path.join(os.path.dirname(__file__), "templates"),
     static_path=os.path.join(os.path.dirname(__file__), "static"))
