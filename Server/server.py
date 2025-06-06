@@ -31,8 +31,6 @@ class ControlWebSocket(tornado.websocket.WebSocketHandler):
       print("Frontend WebSocket connected")
 
     async def on_message(self, message):
-        print(f"Received command from frontend: {message}")
-        print(self.clients)
         for client in self.clients:
           print(client)  
           client.write_message(message)
@@ -53,4 +51,6 @@ def make_app():
 if __name__ == "__main__":
     app = make_app()
     app.listen(8888)
+    print("Server running.....")
     tornado.ioloop.IOLoop.current().start()
+    

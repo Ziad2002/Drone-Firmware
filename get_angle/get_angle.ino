@@ -5,6 +5,8 @@
 
 
 Adafruit_LSM9DS1 lsm = Adafruit_LSM9DS1();
+extern TwoWire myWire;
+
 
 // Calibration offsets
 float accel_offset[3] = {0}, gyro_offset[3] = {0}, mag_offset[3] = {0};
@@ -19,6 +21,12 @@ float dt = 0.004;  // initial guess
 
 void setup() {
   Serial.begin(115200);
+
+  // Initialize custom I2C bus
+  Wire.begin(32, 33);  // Use GPIO 32 as SDA, GPIO 33 as SCL
+
+
+
   if (!lsm.begin()) {
     Serial.println("Failed to detect LSM9DS1!");
     while (1);

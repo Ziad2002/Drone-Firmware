@@ -1,42 +1,57 @@
-#include "esp_camera.h"
+#include "camera_task.h"
+#include <Arduino.h>
 #include <WiFi.h>
 #include <WebSocketsClient.h>
+#include "esp_camera.h"
+#include "freertos/FreeRTOS.h"
+#include "freertos/task.h"
 
-// ===== Wi-Fi and WebSocket config =====
-const char* ssid = "Device-Northwestern";
-const char* server_host = "18.223.203.35";  // Tornado server IP
+
+
+const char* server_host = "18.223.203.35";
 const uint16_t server_port = 8888;
-const char* server_path = "/esp32_image";   // WebSocket endpoint
-
-#define CAMERA_MODEL_AI_THINKER
-#include "camera_pins.h"
+const char* server_path = "/esp32_image";
 
 WebSocketsClient webSocket;
 
 void webSocketEvent(WStype_t type, uint8_t * payload, size_t length) {
   if (type == WStype_CONNECTED) {
-    Serial.println("✅ WebSocket connected");
+    Serial.println("WebSocket connected");
   } else if (type == WStype_DISCONNECTED) {
-    Serial.println("❌ WebSocket disconnected");
+    Serial.println("WebSocket disconnected");
   }
 }
 
 void sendFrame() {
   camera_fb_t *fb = esp_camera_fb_get();
   if (!fb) {
-    Serial.println("❌ Camera capture failed");
+    Serial.println("Camera capture failed");
     return;
   }
 
   if (webSocket.isConnected()) {
     webSocket.sendBIN(fb->buf, fb->len);
-    Serial.printf("📤 Sent %d bytes\n", fb->len);
+    Serial.printf("Sent %d bytes", fb->len);
   }
 
   esp_camera_fb_return(fb);
 }
 
-void startCamera() {
+void cameraTask(void *pvParameters) {
+  while (true) {
+    webSocket.loop();
+    if (webSocket.isConnected()) {
+      sendFrame();
+    }
+    vTaskDelay(100 / portTICK_PERIOD_MS); // ~10 FPS
+  }
+}
+
+void initCameraTask() {
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi not connected - Camera task will not start");
+    return;
+  }
   camera_config_t config;
   config.ledc_channel = LEDC_CHANNEL_0;
   config.ledc_timer = LEDC_TIMER_0;
@@ -58,7 +73,7 @@ void startCamera() {
   config.pin_reset = RESET_GPIO_NUM;
   config.xclk_freq_hz = 20000000;  // More stable than 20 MHz
   config.pixel_format = PIXFORMAT_JPEG;
-
+  
   if (psramFound()) {
     config.frame_size = FRAMESIZE_VGA;
     config.jpeg_quality = 10;
@@ -77,37 +92,10 @@ void startCamera() {
   } else {
     Serial.println("✅ Camera initialized");
   }
-}
-
-void setup() {
-  Serial.begin(115200);
-  delay(2000);  // Important for stable startup
-
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(ssid);
-  Serial.print("Connecting to Wi-Fi");
-  while (WiFi.status() != WL_CONNECTED) {
-    delay(500);
-    Serial.print(".");
-  }
-  Serial.println("\n✅ Wi-Fi connected");
-  Serial.print("IP Address: ");
-  Serial.println(WiFi.localIP());
-
-  startCamera();
 
   webSocket.begin(server_host, server_port, server_path);
   webSocket.onEvent(webSocketEvent);
   webSocket.setReconnectInterval(5000);
-}
 
-unsigned long lastSend = 0;
-
-void loop() {
-  webSocket.loop();
-
-  if (webSocket.isConnected() && millis() - lastSend >= 100) {  // 10 FPS
-    sendFrame();
-    lastSend = millis();
-  }
+  xTaskCreatePinnedToCore(cameraTask, "CameraTask", 8192, NULL, 1, NULL, 1);
 }

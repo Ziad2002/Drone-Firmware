@@ -2,119 +2,178 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Drone Control Panel</title>
+  <title>WILDSIGHT</title>
   <link rel="stylesheet" href="/static/style.css">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 </head>
 
 <body>
-<h2 style="color: purple;">WildSight</h2>
-<img id="droneImage" src="/static/capture.jpg" style="width: 400px; height: 400px; border: 1px solid black; object-fit: contain; margin-bottom: 10px;">
-
-
-  <div class="drone-controls">
-    <div class="movement-grid">
-      <div></div>
-      <button class="btn btn-forward" onclick="sendCommand('forward')">
-        <i class='fa fa-arrow-up'></i>
-      </button>
-      <div></div>
-
-      <button class="btn btn-left" onclick="sendCommand('left')">
-        <i class='fa fa-arrow-left'></i>
-      </button>
-      <div class="spacer"></div>
-      <button class="btn btn-right" onclick="sendCommand('right')">
-        <i class='fa fa-arrow-right'></i>
-      </button>
-
-      <div></div>
-      <button class="btn btn-backward" onclick="sendCommand('backward')">
-        <i class='fa fa-arrow-down'></i>
-      </button>
-      <div></div>
-    </div>
-
-    <div class="main-buttons">
-      <button class="btn btn-hover" onclick="sendCommand('hover')">Hover</button>
-    </div>
-
-    <div class="movement-grid">
-      <div></div>
-      <button class="btn btn-up" onclick="sendCommand('up')">
-        <i class="fa fa-angle-double-up"></i>
-      </button>
-      <div></div>
-
-      <button class="btn btn-yaw-left" onclick="sendCommand('yaw_left')">
-        <i class='fa fa-rotate-left'></i>
-      </button>
-      <div class="spacer"></div>
-      <button class="btn btn-yaw-right" onclick="sendCommand('yaw_right')">
-        <i class='fa fa-rotate-right'></i>
-      </button>
-
-      <div></div>
-      <button class="btn btn-down" onclick="sendCommand('down')">
-        <i class="fa fa-angle-double-down"></i>
-      </button>
-      <div></div>
-    </div>
+  <div class="logo">
+    <img src="/static/logo.png">
   </div>
+  <div class="imageFrame">
+    <img id="droneImage" src="/static/capture.jpg" style="width: 400px; height: 400px; border: 1px solid black; object-fit: contain;">
+  </div>
+  
+
+
+  <div id="controller-panel">
+    <div id="joysticks">
+
+      <div class="joystick-container" id="leftPad">
+        <div class="stick" id="leftStick"></div>
+      </div>
+      <div id="telemetry">
+        <p>Throttle: <span id="throttleVal">1000</span> | Yaw: <span id="yawVal">1500</span></p>
+        <p>Pitch: <span id="pitchVal">1500</span> | Roll: <span id="rollVal">1500</span></p>
+      </div>
+      <div class="joystick-container" id="rightPad">
+        <div class="stick" id="rightStick"></div>
+      </div>
+      
+
+    </div>
+    <pre id="msg" style="height: 100px; width: 50%; overflow-y: scroll; background: white; color: black; padding: 10px; font-family: monospace;"></pre>
+    <label class="switch">
+      <input type="checkbox" id="startStopToggle">
+      <span class="slider"></span>
+    </label>
+  </div>
+
+
+
+
 
   <script>
     const ws = new WebSocket("ws://18.223.203.35:8888/esp32_drone");
-  
-    ws.onopen = () => console.log("Connected to Tornado WebSocket");
-    ws.onerror = (err) => console.error("WebSocket error:", err);
-    ws.onclose = () => console.warn("WebSocket closed");
-    document.addEventListener("keydown", function(event) {
-        const key = event.key.toLowerCase();
-      
-        switch (key) {
-          case "arrowup":
-            sendCommand("forward");
-            break;
-          case "arrowdown":
-            sendCommand("backward");
-            break;
-          case "arrowleft":
-            sendCommand("left");
-            break;
-          case "arrowright":
-            sendCommand("right");
-            break;
-          case " ":
-            sendCommand("hover");
-            break;
-          case "a":
-            sendCommand("yaw_left");
-            break;
-          case "d":
-            sendCommand("yaw_right");
-            break;
-          case "w":
-            sendCommand("up");
-            break;
-          case "s":
-            sendCommand("down");
-            break;
-        }
-      });
-  
-    function sendCommand(cmd) {
+    const rcCommand = { throttle: 1000, yaw: 1500, pitch: 1500, roll: 1500 };
+
+    function sendRCCommand() {
       if (ws.readyState === WebSocket.OPEN) {
-        ws.send(cmd);
-        console.log(`Sent: ${cmd}`);
-      } else {
-        alert("WebSocket not connected.");
+        ws.send(JSON.stringify(rcCommand));
+        console.log("Sent:", JSON.stringify(rcCommand));
+        document.getElementById("throttleVal").innerText = Math.round(rcCommand.throttle);
+        document.getElementById("yawVal").innerText = Math.round(rcCommand.yaw);
+        document.getElementById("pitchVal").innerText = Math.round(rcCommand.pitch);
+        document.getElementById("rollVal").innerText = Math.round(rcCommand.roll);
+
+        updateStickFromRC("leftStick", "leftPad", rcCommand.yaw, rcCommand.throttle);
+        updateStickFromRC("rightStick", "rightPad", rcCommand.roll, rcCommand.pitch);
       }
     }
+
+    const step = 10;
+    const max = 2000;
+    const min = 1000;
+
+    document.addEventListener("keydown", (e) => {
+      switch (e.key.toLowerCase()) {
+        case "w": rcCommand.throttle = Math.min(max, rcCommand.throttle + step); break;
+        case "s": rcCommand.throttle = Math.max(min, rcCommand.throttle - step); break;
+        case "arrowleft": rcCommand.roll = Math.max(min, rcCommand.roll - step); break;
+        case "arrowright": rcCommand.roll = Math.min(max, rcCommand.roll + step); break;
+        case "arrowup": rcCommand.pitch = Math.min(max, rcCommand.pitch + step); break;
+        case "arrowdown": rcCommand.pitch = Math.max(min, rcCommand.pitch - step); break;
+        case "a": rcCommand.yaw = Math.max(min, rcCommand.yaw - step); break;
+        case "d": rcCommand.yaw = Math.min(max, rcCommand.yaw + step); break;
+      }
+      sendRCCommand();
+    });
+
+    function updateStickFromRC(stickId, padId, xValue, yValue) {
+      const stick = document.getElementById(stickId);
+      const pad = document.getElementById(padId);
+      const rect = pad.getBoundingClientRect();
+      const max = rect.width / 2 - 30;
+      const dx = ((xValue - 1500) / 500) * max;
+      const dy = -((yValue - 1500) / 500) * max; // Inverted Y for correct visual mapping
+      stick.style.left = `${dx + rect.width / 2}px`;
+      stick.style.top = `${dy + rect.height / 2}px`;
+    }
+
+    function setupJoystick(padId, stickId, callback) {
+      const pad = document.getElementById(padId);
+      const stick = document.getElementById(stickId);
+      const rect = pad.getBoundingClientRect();
+      let dragging = false;
+
+      const max = rect.width / 2 - 30;
+
+      function handleMove(e) {
+        if (!dragging) return;
+        const touch = e.touches ? e.touches[0] : e;
+        const x = touch.clientX - rect.left - rect.width / 2;
+        const y = touch.clientY - rect.top - rect.height / 2;
+        const dx = Math.max(-max, Math.min(max, x));
+        const dy = Math.max(-max, Math.min(max, y));
+        stick.style.left = `${dx + rect.width / 2}px`;
+        stick.style.top = `${dy + rect.height / 2}px`;
+        callback(dx / max, dy / max);
+      }
+
+      pad.addEventListener('mousedown', e => { dragging = true; handleMove(e); });
+      pad.addEventListener('touchstart', e => { dragging = true; handleMove(e); });
+
+      window.addEventListener('mousemove', handleMove);
+      window.addEventListener('touchmove', handleMove);
+
+      window.addEventListener('mouseup', () => { dragging = false; });
+      window.addEventListener('touchend', () => { dragging = false; });
+    }
+
+    setupJoystick("leftPad", "leftStick", (dx, dy) => {
+      rcCommand.yaw = 1500 + dx * 500;
+      rcCommand.throttle += -dy * 10;
+      rcCommand.throttle = Math.max(1000, Math.min(2000, rcCommand.throttle));
+      sendRCCommand();
+    });
+
+    setupJoystick("rightPad", "rightStick", (dx, dy) => {
+      rcCommand.roll = 1500 + dx * 500;
+      rcCommand.pitch = 1500 + dy * 500;
+      sendRCCommand();
+    });
 
     setInterval(() => {
       const img = document.getElementById("droneImage");
       img.src = `/static/capture.jpg?rand=${Math.random()}`;
-    }, 100); 
+    }, 100);
+
+    const toggle = document.getElementById("startStopToggle");
+
+    toggle.addEventListener("change", () => {
+      if (toggle.checked) {
+        writeToScreen("🟢 Drone Started");
+        ws.send("START");  // or your start command
+      } else {
+        writeToScreen("🔴 Drone Stopped");
+        ws.send("STOP");  // or your stop command
+      }
+    });
+
+
+  function writeToScreen(message) {
+    const log = document.getElementById("msg");
+    log.innerText += message + "\n";
+    log.scrollTop = log.scrollHeight; // auto-scroll to bottom
+  } 
+
+  ws.addEventListener("open", () => {
+  writeToScreen("Connected to Drone.");
+  });
+
+  ws.addEventListener("close", () => {
+    writeToScreen("WebSocket connection closed.");
+  });
+
+  ws.addEventListener("error", (e) => {
+    writeToScreen("WebSocket error occurred.");
+  });
+
+  ws.addEventListener("message", (e) => {
+    writeToScreen("Message: " + e.data);
+  });
   </script>
+
 </body>
+
 </html>

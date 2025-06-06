@@ -1,36 +1,27 @@
 #include <Arduino.h>
-#include "websocket.h"
-#include "sensor.h"
-#include "movement.h"
-
-// Global command queue
-QueueHandle_t commandQueue;
-
-#define motor1 19
-#define motor2 18
-#define motor3 5
-#define motor4 17
+#include <WiFi.h>
+#include "camera_task.h"
+#include "control_task.h"
+#include "motion_task.h"
 
 void setup() {
   Serial.begin(115200);
-
-  pinMode(motor1, OUTPUT);
-  pinMode(motor2, OUTPUT);
-  pinMode(motor3, OUTPUT);
-  pinMode(motor4, OUTPUT);
-
-  // Create queue before starting tasks
-  commandQueue = xQueueCreate(10, sizeof(String*));
-  if (commandQueue == NULL) {
-    Serial.println("Error creating command queue!");
-    while (true);  // Fatal error, freeze
+  WiFi.mode(WIFI_STA);
+  WiFi.begin("Device-Northwestern");
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
   }
+  Serial.println("Wi-Fi connected");
+  Serial.print("IP Address: ");
+  Serial.println(WiFi.localIP());
 
-  startWebSocketTask();
-  startMovementTask();
-  startSensorTask();
+  initCameraTask();
+  initControlTask();
+  initMotionTask();
 }
 
 void loop() {
-  // Nothing here - FreeRTOS tasks handle everything
+
 }
