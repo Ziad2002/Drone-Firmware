@@ -31,7 +31,7 @@ void sendFrame() {
 
   if (webSocket.isConnected()) {
     webSocket.sendBIN(fb->buf, fb->len);
-    Serial.printf("Sent %d bytes", fb->len);
+    //Serial.printf("Sent %d bytes", fb->len);
   }
 
   esp_camera_fb_return(fb);

@@ -6,30 +6,48 @@
 #include <WebSocketsClient.h>
 #include <ArduinoJson.h>
 
-
-
 WebSocketsClient controlWS;
 SemaphoreHandle_t controlMutex = NULL;
+bool isRunning = false;
+int calibrationRequested = 0;
+extern void calibrateSensors(int samples); 
+
 int throttle = 1000, pitch = 1500, roll = 1500, yaw = 1500;
 
 void onControlMessage(WStype_t type, uint8_t * payload, size_t length) {
   if (type == WStype_TEXT) {
+    Serial.print("Received: ");
+    Serial.println((char*)payload);
+
+    if (strcmp((char*)payload, "START") == 0) {
+      isRunning = true;
+      calibrationRequested = 1;
+      Serial.println("Drone STARTED");
+      return;
+    }
+    if (strcmp((char*)payload, "STOP") == 0) {
+      isRunning = false;
+      calibrationRequested = 0;
+      Serial.println("Drone STOPPED");
+      return;
+    }
+
     StaticJsonDocument<200> doc;
     if (deserializeJson(doc, payload) == DeserializationError::Ok) {
+
+      // Handle control values only if drone is running
       if (xSemaphoreTake(controlMutex, portMAX_DELAY)) {
         throttle = doc["throttle"];
         pitch = doc["pitch"];
         roll = doc["roll"];
         yaw = doc["yaw"];
-        Serial.print("throttle: "); Serial.println(throttle);
-        Serial.print("pitch: "); Serial.println(pitch);
-        Serial.print("roll: "); Serial.println(roll);
-        Serial.print("yaw: "); Serial.println(yaw);
+
         xSemaphoreGive(controlMutex);
+      }
       }
     }
   }
-}
+
 
 void controlTask(void *pvParameters) {
   while (true) {
